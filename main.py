@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import math
+import matplotlib.pyplot as plt
  
 # Entrada: ninguno, usa el directorio actual
 # Salida: lista de archivos .txt en el directorio actual
@@ -86,12 +87,37 @@ def longitud_tuberias(nodos, adj):
             pipe_lengths.append((u, v, l, temp)) # Agregamos el resultado a la lista
     return pipe_lengths
 
-def main():
-    files = get_all_txt_files()
-    for file in files:
-        nodes, sources, adj, office, new_nodes = ready_up_graph(file)
-        pipe_lengths = longitud_tuberias(nodes, adj)
-        print(pipe_lengths)
+def graficar_network(nodos, adj):
+    plt.figure(figsize=(8,8))
 
+    # Nodos
+    for nid, (x,y,tipo) in nodos.items():
+        color = "red"if tipo == 1 else "blue"
+        plt.scatter(x,y,c=color,s=30)
+        plt.text(x,y,str(nid),fontsize=8)
+    
+    # Aristas
+    drawn = set() # Evitamos dibujar la misma arista dos veces
+    for u,vecinos in adj.items():
+        x1,y1, _ = nodos[u]
+        for v,_ in vecinos:
+            if (v,u) in drawn:
+                continue
+            drawn.add((u,v))
+            x2,y2, _ = nodos[v]
+            plt.plot([x1,x2],[y1,y2],c="gray", linewidth=1)
+    
+    plt.axis("equal")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.title("Distribución de agua")
+    plt.show()
+
+def main(): # Main
+    files = get_all_txt_files() # Archivos .txt
+    for file in files: # Por cada archivo
+        nodes, sources, adj, office, new_nodes = ready_up_graph(file) # Datos del grafo
+        pipe_lengths = longitud_tuberias(nodes, adj) # Longitudes de las tuberías
+        graficar_network(nodes, adj)
 if __name__ == "__main__":
     main()
