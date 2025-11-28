@@ -2,7 +2,10 @@ import os
 from pathlib import Path
 import math
 import matplotlib.pyplot as plt
- 
+
+# Términos importantes
+# Lista de adyacencia: Lista que representa las conexiones entre nodos en un grafo.
+
 # Entrada: ninguno, usa el directorio actual
 # Salida: lista de archivos .txt en el directorio actual
 # Complejidad: O(n)
@@ -87,8 +90,11 @@ def longitud_tuberias(nodos, adj):
             pipe_lengths.append((u, v, l, temp)) # Agregamos el resultado a la lista
     return pipe_lengths
 
+# Entrada: Nodos y lista de adyacencia
+# Salida: La función en si no retorna nada, solo muestra el gráfico de la red
+# Complejidad: O(n^2)
 def graficar_network(nodos, adj):
-    plt.figure(figsize=(8,8))
+    plt.figure(figsize=(8,8)) # Tamaño de la figura
 
     # Nodos
     for nid, (x,y,tipo) in nodos.items():
@@ -113,11 +119,20 @@ def graficar_network(nodos, adj):
     plt.title("Distribución de agua")
     plt.show()
 
+# TODO: Sectorización de la red
+# 1. Dividir la red en sectores, cada uno asociado a una fuente
+# 2. Los nodos deben quedar asignados a la fuente más cercana de la red (No en distancia eucladiana sino en el grafo)
+# 3. Determinar que tuberías son las que se deben cerrar para separar los sectores
+# Cosas que mostar:
+#       1. Que nodos pertenecen a cada sector
+#       2. Que tuberías se deben cerrar
+#       3. Gráfico coloreado con sectores y marcando las tuberías que se deben cerrar
 def main(): # Main
     files = get_all_txt_files() # Archivos .txt
     for file in files: # Por cada archivo
         nodes, sources, adj, office, new_nodes = ready_up_graph(file) # Datos del grafo
         pipe_lengths = longitud_tuberias(nodes, adj) # Longitudes de las tuberías
-        graficar_network(nodes, adj)
+        graficar_network(nodes, adj) # Gráfico de la red
+
 if __name__ == "__main__":
     main()
