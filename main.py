@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import math
 import matplotlib.pyplot as plt
+import heapq
 
 # Términos importantes
 # Lista de adyacencia: Lista que representa las conexiones entre nodos en un grafo.
@@ -127,12 +128,58 @@ def graficar_network(nodos, adj):
 #       1. Que nodos pertenecen a cada sector
 #       2. Que tuberías se deben cerrar
 #       3. Gráfico coloreado con sectores y marcando las tuberías que se deben cerrar
+
+def establecer_closed_pipes(central, adj):
+    closed = []
+    seen = set()
+    for u, n in adj.items():
+        for v, _ in n:
+            if (u,v) in seen or (v,u) in seen:
+                continue
+            seen.add((u,v))
+            if central[u] != central[v]:
+                closed.append((u,v))
+    return closed
+
+
+def sectorizacion(sources, adj):
+    inf_float = float("inf")
+    best_dist = {u: inf_float for u in adj} # Distancia mínima a una fuente
+    central_point = {u: None for u in adj} # Punto central de la fuente
+
+    pq = []
+    for i in sources:
+        best_dist[i] = 0.0
+        central_point[i] = i
+        heapq.heappush(pq, (0.0,i,i)) # distancia , nodo actual , nodo padre
+    
+    while pq:
+        distancia, src, u = heapq.heappop(pq)
+        if distancia != best_dist[u] or central_point[u] != src:
+            continue # Si la distancia no es la mejor o no es el nodo padre, ignoramos
+        for v, l in adj[U]:
+            nd = distancia + l
+            if nd < best_dist[v]:
+                best_dist[v] = nd
+                central_point[v] = src
+                heapq.heappush(pq, (nd, src, v)) # distancia , nodo actual , nodo padre
+    
+    sectors = {}
+    for node,src in central_point.items():
+        sectors.setdefault(src, []).append(node)
+    
+    return sectors,central_point,best_dist
+
+#def graficar_sectorizacion(nodos, adj, central, closed_pipes):
+#    TODO
+
 def main(): # Main
     files = get_all_txt_files() # Archivos .txt
     for file in files: # Por cada archivo
         nodes, sources, adj, office, new_nodes = ready_up_graph(file) # Datos del grafo
         pipe_lengths = longitud_tuberias(nodes, adj) # Longitudes de las tuberías
         graficar_network(nodes, adj) # Gráfico de la red
+        # graficar_sectorizacion(nodes, adj, central, closed_pipes)
 
 if __name__ == "__main__":
     main()
