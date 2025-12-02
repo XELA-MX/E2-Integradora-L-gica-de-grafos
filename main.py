@@ -173,13 +173,43 @@ def sectorizacion(sources, adj):
 #def graficar_sectorizacion(nodos, adj, central, closed_pipes):
 #    TODO
 
+def calidad_agua(origen, nodos, vecino):
+    distancia = {n: float('inf') for n in nodos}
+    procesado = {n: 0 for n in nodos}
+    predecesor = {n: None for n in nodos}
+
+    distancia[origen] = 0
+    q = [n for n in nodos]
+    while q:
+        u = None
+        menor = float('inf')
+        for n in q:
+            if distancia[n] < menor:
+                menor = distancia[n]
+                u = n
+        q.remove(u)
+        procesado[u] = 1
+
+        for (v, l) in vecino[u]:
+            nueva_dist = distancia[u] + l
+            if nueva_dist < distancia[v]:
+                distancia[v] = nueva_dist
+                predecesor[v] = u
+
+    return distancia, predecesor
+
+
 def main(): # Main
     files = get_all_txt_files() # Archivos .txt
     for file in files: # Por cada archivo
         nodes, sources, adj, office, new_nodes = ready_up_graph(file) # Datos del grafo
         pipe_lengths = longitud_tuberias(nodes, adj) # Longitudes de las tuberías
-        graficar_network(nodes, adj) # Gráfico de la red
-        # graficar_sectorizacion(nodes, adj, central, closed_pipes)
+        sectors, central, distances = sectorizacion(sources, adj)
+        agua_dist, agua_pred = calidad_agua(office, nodes, adj)
+        print(f"Archivo: {file}")
+        print(f"  Sectores: {sectors}")
+        print(f"  Distancias a fuentes: {distances}")
+        print(f"  Calidad del agua desde oficina: {agua_dist}")
 
 if __name__ == "__main__":
     main()
