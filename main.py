@@ -99,7 +99,7 @@ def graficar_network(nodos, adj):
 
     # Nodos
     for nid, (x,y,tipo) in nodos.items():
-        color = "red"if tipo == 1 else "blue"
+        color = "red" if tipo == 1 else "blue"
         plt.scatter(x,y,c=color,s=30)
         plt.text(x,y,str(nid),fontsize=8)
     
@@ -194,6 +194,8 @@ def calidad_agua(origen, nodos, vecino):
             if distancia[n] < menor:
                 menor = distancia[n]
                 u = n
+        if u is None:  # SI no hay más nodos
+            break
         q.remove(u)
         procesado[u] = 1
 
