@@ -91,33 +91,78 @@ def longitud_tuberias(nodos, adj):
             pipe_lengths.append((u, v, l, temp)) # Agregamos el resultado a la lista
     return pipe_lengths
 
-# Entrada: Nodos y lista de adyacencia
-# Salida: La función en si no retorna nada, solo muestra el gráfico de la red
-# Complejidad: O(n^2)
-def graficar_network(nodos, adj):
-    plt.figure(figsize=(8,8)) # Tamaño de la figura
+# Graficar la red con sectores, tuberías cerradas, oficina y ruta
+def graficar_network(nodos, adj, central=None, closed_pipes=None, office=None, ruta_calidad=None, nuevos_nodos=None):
+    plt.figure(figsize=(14,10))
 
-    # Nodos
-    for nid, (x,y,tipo) in nodos.items():
-        color = "red" if tipo == 1 else "blue"
-        plt.scatter(x,y,c=color,s=30)
-        plt.text(x,y,str(nid),fontsize=8)
+    colores = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2']
     
-    # Aristas
-    drawn = set() # Evitamos dibujar la misma arista dos veces
-    for u,vecinos in adj.items():
-        x1,y1, _ = nodos[u]
-        for v,_ in vecinos:
-            if (v,u) in drawn:
+    drawn = set()
+    for u, vecinos in adj.items():
+        if u not in nodos:
+            continue
+        x1, y1, _ = nodos[u]
+        for v, _ in vecinos:
+            if v not in nodos or (v, u) in drawn:
                 continue
-            drawn.add((u,v))
-            x2,y2, _ = nodos[v]
-            plt.plot([x1,x2],[y1,y2],c="gray", linewidth=1)
+            drawn.add((u, v))
+            x2, y2, _ = nodos[v]
+            
+            cerrada = closed_pipes and ((u, v) in closed_pipes or (v, u) in closed_pipes)
+            if cerrada:
+                plt.plot([x1, x2], [y1, y2], c="red", linewidth=3, linestyle='--', 
+                        label='Tubería cerrada' if (u,v) == closed_pipes[0] else '', zorder=1)
+            else:
+                plt.plot([x1, x2], [y1, y2], c="gray", linewidth=1, alpha=0.5, zorder=1)
+    
+    if ruta_calidad and len(ruta_calidad) > 1:
+        for i in range(len(ruta_calidad) - 1):
+            u, v = ruta_calidad[i], ruta_calidad[i+1]
+            if u in nodos and v in nodos:
+                x1, y1, _ = nodos[u]
+                x2, y2, _ = nodos[v]
+                plt.plot([x1, x2], [y1, y2], c="green", linewidth=2.5, alpha=0.7, 
+                        label='Ruta de calidad' if i == 0 else '', zorder=2)
+    
+    for nid, (x, y, tipo) in nodos.items():
+        if central and nid in central:
+            sid = central[nid]
+            slist = sorted(set(central.values()))
+            if sid in slist:
+                idx = slist.index(sid) % len(colores)
+                color = colores[idx]
+            else:
+                color = "gray"
+        else:
+            color = "red" if tipo == 1 else "blue"
+        
+        size = 100 if tipo == 1 else 50
+        
+        if office and nid == office:
+            plt.scatter(x, y, c="gold", s=150, marker='s', edgecolors='black', 
+                       linewidths=2, zorder=4, label='Oficina')
+        elif tipo == 1:
+            plt.scatter(x, y, c=color, s=size, marker='^', edgecolors='black', 
+                       linewidths=2, zorder=3, 
+                       label='Fuente' if nid == min([n for n in nodos if nodos[n][2] == 1]) else '')
+        else:
+            plt.scatter(x, y, c=color, s=size, edgecolors='black', linewidths=0.5, zorder=3)
+        
+        plt.text(x, y+0.3, str(nid), fontsize=8, ha='center', fontweight='bold')
+    
+    if nuevos_nodos:
+        for i, (x, y, _) in enumerate(nuevos_nodos):
+            plt.scatter(x, y, c="purple", s=150, marker='*', edgecolors='black', 
+                       linewidths=2, zorder=5, label='Nuevo nodo' if i == 0 else '')
+            plt.text(x, y+0.4, f"N{i+1}", fontsize=9, ha='center', 
+                    fontweight='bold', color='purple')
     
     plt.axis("equal")
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.title("Distribución de agua")
+    plt.title("Red de Distribución de Agua")
+    plt.legend(loc='best')
+    plt.grid(True, alpha=0.3)
     plt.show()
 
 # TODO: Sectorización de la red
@@ -177,9 +222,7 @@ def sectorizacion(sources, adj):
     
     return sectors,central_point,best_dist
 
-# Entrada: origen, nodos y lista de adyacencia
-# Salida: distancia y predecesor
-# Complejidad: O(n^2)
+# Dijkstra para calcular distancias desde un nodo origen
 def calidad_agua(origen, nodos, vecino):
     distancia = {n: float('inf') for n in nodos}
     procesado = {n: 0 for n in nodos}
@@ -194,15 +237,15 @@ def calidad_agua(origen, nodos, vecino):
             if distancia[n] < menor:
                 menor = distancia[n]
                 u = n
-        if u is None:  # SI no hay más nodos
+        if u is None:
             break
         q.remove(u)
         procesado[u] = 1
 
         for (v, l) in vecino[u]:
-            nueva_dist = distancia[u] + l
-            if nueva_dist < distancia[v]:
-                distancia[v] = nueva_dist
+            nd = distancia[u] + l
+            if nd < distancia[v]:
+                distancia[v] = nd
                 predecesor[v] = u
 
     return distancia, predecesor
@@ -417,6 +460,45 @@ def calidad_busqueda_exhaustiva(o, adj, dist_matrix):
     ruta.append(o)  # Regresamos al nodo inicial
     return ruta
 
+
+# Agregar nuevos nodos a la red
+def expandir_red(nodos, adj, sources, new_nodes):
+    next_id = max(nodos.keys()) + 1 if nodos else 1
+    nuevos_agregados = []
+    
+    for x_new, y_new, d_max in new_nodes:
+        nodo_cercano = None
+        dist_minima = float('inf')
+        
+        for nid, (x, y, tipo) in nodos.items():
+            if tipo == 1:
+                continue
+            dist = math.hypot(x_new - x, y_new - y)
+            if dist <= d_max and dist < dist_minima:
+                dist_minima = dist
+                nodo_cercano = nid
+        
+        if nodo_cercano is None:
+            for nid, (x, y, tipo) in nodos.items():
+                dist = math.hypot(x_new - x, y_new - y)
+                if dist <= d_max and dist < dist_minima:
+                    dist_minima = dist
+                    nodo_cercano = nid
+        
+        if nodo_cercano is not None:
+            nodos[next_id] = (x_new, y_new, 0)
+            adj.setdefault(next_id, [])
+            
+            adj[nodo_cercano].append((next_id, dist_minima))
+            adj[next_id].append((nodo_cercano, dist_minima))
+            
+            nuevos_agregados.append((next_id, nodo_cercano, dist_minima))
+            next_id += 1
+        else:
+            print(f"ADVERTENCIA: No se pudo conectar el nuevo nodo en ({x_new}, {y_new}) - fuera de rango")
+    
+    return nodos, adj, nuevos_agregados
+
 def main():
     files = get_all_txt_files()
     for file in files:
@@ -426,7 +508,6 @@ def main():
         agua_dist, agua_pred = calidad_agua(office, nodes, adj)
         flujo_max = flujo_max_sector(sectors, distances, adj)
         
-        # Calcular matriz de distancias más cortas
         dist_matrix = floyd_warshall(adj)
         ruta_calidad = calidad_busqueda_exhaustiva(office, adj, dist_matrix)
         distancia_ruta = office_a_office(ruta_calidad, dist_matrix)
@@ -440,6 +521,10 @@ def main():
         print("Ruta de calidad del agua: ", ruta_calidad)
         print("Distancia total de la ruta: ", distancia_ruta)
         print("--------------------------------\n\n")
+        
+        # Graficar la red completa
+        closed_pipes = establecer_closed_pipes(central, adj)
+        graficar_network(nodes, adj, central, closed_pipes, office, ruta_calidad, None)
 
 
 
