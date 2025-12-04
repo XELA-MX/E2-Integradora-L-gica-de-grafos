@@ -327,7 +327,95 @@ def flujo_max_sector(sectores, mejor_dist, adj):
         resultados[fuente] = (furthest_node, max_flow)
 
     return resultados
+
+# Ruta de muestreo de calidad del agua
+# TODO:
+# Suponer que una persona inicia en el nodo *office*.
+# Determinar una ruta de distancia mínima que:
+#   - Visite todos los nodos
+#   - Regrese al nodo office al final.
+# Es un problema tipo TSP sobre el grafo, asumiendo que las calles sigan las tuberías.
+# Mejor implementación: Maybe búsqueda exhaustiva de tipo greedy o un Minimo Spanning Tree.
+
+# dist_amtriz: matriz de distancias más cortas entre todos los pares de nodos
+
+# Entrada: grafo de adyacencia
+# Salida: matriz de distancias más cortas entre todos los pares de nodos
+# Complejidad: O(n^3)
+def floyd_warshall(adj):
+    # Distancias más cortas entre dos puntos
+    nodes = list(adj.keys())
+    dist = {u: {v: float('inf') for v in nodes} for u in nodes}
     
+    # Distancia de un nodo a sí mismo es 0, no vuelvo a caer
+    for u in nodes:
+        dist[u][u] = 0.0
+    
+    # Distancias directas del grafo
+    for u in adj:
+        for v, l in adj[u]:
+            dist[u][v] = min(dist[u][v], l)
+    
+    # Floyd-Warshall
+    for k in nodes:
+        for i in nodes:
+            for j in nodes:
+                if dist[i][k] + dist[k][j] < dist[i][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+    
+    return dist
+
+# Entrada: ruta (lista de nodos), matriz de distancias
+# Salida: distancia total de la ruta
+# Complejidad: O(n)
+def office_a_office(r, dist_matrix):
+    # Calcula la distancia total de una ruta usando la matriz de distancias más cortas
+    t = 0.0
+    for i in range(len(r) - 1):
+        u, v = r[i], r[i+1]
+        if v in dist_matrix.get(u, {}):
+            t += dist_matrix[u][v]
+        else:
+            # Si no hay camino, retornar infinito
+            return float('inf')
+    return t
+
+
+# Entrada: nodo inicial (o), grafo (adj), matriz de distancias
+# Salida: ruta completa que visita todos los nodos y regresa a o
+# Complejidad: O(n^2)
+def calidad_busqueda_exhaustiva(o, adj, dist_matrix):
+    visited = set([o])
+    ruta = [o]
+    current = o
+    nodes = list(adj.keys())
+
+    # Nearest Neighbor: mientras haya nodos sin visitar
+    while len(visited) < len(nodes):
+        m_v = None
+        m_l = float('inf')
+        
+        # Buscar el nodo no visitado más cercano (usando distancia más corta)
+        for v in nodes:
+            if v in visited:
+                continue
+            # Solo considerar nodos que están conectados
+            if current in dist_matrix and v in dist_matrix[current]:
+                dist = dist_matrix[current][v]
+                if dist < m_l:
+                    m_l = dist
+                    m_v = v
+        
+        if m_v is None:
+            # Si no hay más nodos alcanzables, el grafo no es conexo
+            break
+        
+        visited.add(m_v)
+        ruta.append(m_v)
+        current = m_v
+    
+    ruta.append(o)  # Regresamos al nodo inicial
+    return ruta
 
 def main():
     files = get_all_txt_files()
@@ -337,12 +425,20 @@ def main():
         sectors, central, distances = sectorizacion(sources, adj)
         agua_dist, agua_pred = calidad_agua(office, nodes, adj)
         flujo_max = flujo_max_sector(sectors, distances, adj)
+        
+        # Calcular matriz de distancias más cortas
+        dist_matrix = floyd_warshall(adj)
+        ruta_calidad = calidad_busqueda_exhaustiva(office, adj, dist_matrix)
+        distancia_ruta = office_a_office(ruta_calidad, dist_matrix)
 
+        print("--------------------------------")
         print("Resultados obtenidos hasta el momento")
         print("Archivo: ", file)
         print("Longitudes de las tuberías: ", pipe_lengths)
         print("Calidad del agua: ", agua_dist)
         print("Flujo máximo en cada sector: ", flujo_max)
+        print("Ruta de calidad del agua: ", ruta_calidad)
+        print("Distancia total de la ruta: ", distancia_ruta)
         print("--------------------------------\n\n")
 
 
